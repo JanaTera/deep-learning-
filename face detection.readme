@@ -1,0 +1,143 @@
+# deep-learning-
+import pandas
+import mtcnn
+from IPython.display import Image
+from matplotlib import pyplot
+from mtcnn.mtcnn import MTCNN
+from matplotlib.patches import Rectangle
+from matplotlib.patches import Circle
+from tqdm import tqdm
+import sklearn.metrics as metrics
+base_directory = r"./1"
+train_directory = r"/train"
+image_directory = base_directory + train_directory + r"/image_data"
+
+train_dataframe = pandas.read_csv(base_directory + r"/train/train.csv")
+test_dataframe = pandas.read_csv(base_directory + r"/test.csv")
+target = train_dataframe.columns[-1]
+
+train_dataframe.head(3)
+def display_image(filename, head_count='Test set'):
+    display(Image(image_directory + "/" + filename, width = 700, height = 200), "HeadCount: "+ head_count.astype(str))
+    
+display_image(train_dataframe.iloc[0, 0], train_dataframe.iloc[0, 1])
+def draw_image_with_boxes(filename, result_list):
+    fig, ax = pyplot.subplots(figsize=(15, 8))
+    # load the image
+    data = pyplot.imread(image_directory + "/" + filename)
+    # plot the image
+    pyplot.imshow(data)
+    # get the context for drawing boxes
+    ax = pyplot.gca()
+    # plot each box
+    for result in result_list:
+        # get coordinates
+        x, y, width, height = result['box']
+        # create the shape
+        rect = Rectangle((x, y), width, height, fill=False, color='red')
+        # draw the box
+        ax.add_patch(rect)
+        # draw the dots
+        for key, value in result['keypoints'].items():
+            # create and draw dot
+            dot = Circle(value, radius=2, color='red')
+            ax.add_patch(dot)
+    # show the plot
+    pyplot.show()
+errors = []
+
+detector = MTCNN()
+def detect_faces(filename):
+    try:
+        current_image = pyplot.imread(image_directory + "/" + filename)
+        boxes = detector.detect_faces(current_image)
+        length = len(boxes)
+    except ValueError:
+        errors.append(filename)
+        return filename, [], 0
+    
+    return filename, boxes, length
+def single_image_analysis(filename, expected_pred):
+    _, detected_boxes, _ = detect_faces(train_dataframe.iloc[0, 0])
+    draw_image_with_boxes(train_dataframe.iloc[0, 0], detected_boxes)
+
+    print(f"expected prediction: {train_dataframe.iloc[0, 1]}, actually detected: {len(detected_boxes)}")
+    
+
+single_image_analysis(train_dataframe.iloc[0, 0], train_dataframe.iloc[0, 1])
+image_files = train_dataframe.iloc[0:7000, 0]
+targets = train_dataframe.iloc[0:7000, 1]
+predicted = []
+
+for image in tqdm(image_files):
+    predicted.append(detect_faces(image))
+predicted_faces = [pred[2] for pred in predicted]
+                   import numpy as np
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+
+# Example predictions and targets
+predicted = [
+    ["image1.jpg", 0.95, 5],
+    ["image2.jpg", 0.85, 3],
+    ["image3.jpg", 0.99, 4]
+]
+predicted_faces = [pred[2] for pred in predicted]
+targets = [5, 3, 4]  # True face counts
+
+# Verify consistency
+assert len(predicted_faces) == len(targets), "Predictions and targets must have the same length!"
+
+# Generate confusion matrix
+cm = confusion_matrix(targets, predicted_faces)
+
+# Display confusion matrix
+unique_labels = np.unique(np.concatenate((targets, predicted_faces)))
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=unique_labels)
+disp.plot(cmap=plt.cm.Blues)
+plt.title("Confusion Matrix")
+plt.show()
+ import seaborn as sns
+
+# Heatmap of the confusion matrix
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='coolwarm', xticklabels=unique_labels, yticklabels=unique_labels)
+plt.title("Confusion Matrix Heatmap")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+                   # Create stacked bar chart from confusion matrix
+categories = unique_labels
+x = np.arange(len(categories))  # Category indices
+
+# Separate the confusion matrix rows for stacked bars
+bottom = np.zeros(len(categories))
+plt.figure(figsize=(10, 6))
+for i, row in enumerate(cm):
+    plt.bar(x, row, bottom=bottom, label=f"True {categories[i]}")
+    bottom += row
+
+# Customize the plot
+plt.xticks(x, categories)
+plt.xlabel("Predicted Categories")
+plt.ylabel("Counts")
+plt.title("Confusion Matrix - Stacked Bar Chart")
+plt.legend(title="Actual Categories")
+plt.show()
+                   # Create side-by-side bar chart from confusion matrix
+categories = unique_labels
+x = np.arange(len(categories))  # Category indices
+width = 0.35  # Bar width
+
+plt.figure(figsize=(10, 6))
+plt.bar(x - width/2, cm.sum(axis=1), width, label="Actual Counts", color='skyblue')
+plt.bar(x + width/2, cm.sum(axis=0), width, label="Predicted Counts", color='salmon')
+
+# Customize the plot
+plt.xticks(x, categories)
+plt.xlabel("Categories")
+plt.ylabel("Counts")
+plt.title("Comparison of Actual vs Predicted Counts")
+plt.legend()
+plt.show()
+
