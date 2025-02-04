@@ -1,0 +1,107 @@
+import numpy as np, pandas as pd # Data manipulation libraries
+import matplotlib.pyplot as plt # Data visualization
+# Creation of the perceptron class including all important methods
+class Perceptron:
+    def __init__(self, learning_rate=0.01, n_iters=1000):
+        self.learning_rate = learning_rate
+        self.n_iters = n_iters
+        self.activation_func = self._sigmoid_function
+        self.weights = None
+        self.bias = None
+        self.log = pd.DataFrame(columns=["Iteration", "Weights", "Bias", "Actual", "Predicted"]) # DF for logging purposes.
+
+    def _sigmoid_function(self, x):
+        return 1 / (1 + np.exp(-x))
+    
+    def fit(self, X, y):
+        n_samples, n_features = X.shape # returns the number of samples (rows) and features (columns).
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+        self._log(0, X, y) # Logging initial weights and bias as 0
+        # Gradient descent algorithm
+        for iteration in range(1, self.n_iters + 1): #The outer loop runs for the number of iterations (self.n_iters).
+            for idx, x_i in enumerate(X): #The inner loop iterates over each sample x_i in the dataset X.
+                linear_output = np.dot(x_i, self.weights) + self.bias # Calc. the linear combination of weights and features plus bias.
+                y_predicted = self.activation_func(linear_output) #Apply activation func.
+                # Perceptron learning rule update
+                update = self.learning_rate * (y[idx] - y_predicted) # Update rule
+                self.weights += update * x_i # Equation applied
+                self.bias += update
+            # Logger operation
+            self._log(iteration, X, y) # Logging weights, bias, and predictions at each iteration
+
+    def _log(self, iteration, X, y):
+        """Log the weights and bias for each iteration."""
+        y_predicted = self.predict(X) # Calculate predictions for the current weights and bias
+        log_entry = pd.DataFrame({
+            "Iteration": [iteration] * len(X), # Repeating the current iteration for each data point
+            "Weights": [self.weights.copy()] * len(X), # Because weights are stored in array-like so that are mutable
+            "Bias": [self.bias] * len(X), # Bias is scalar immutable therefore no copy operation added
+            "Actual": y, # Log the actual output
+            "Predicted": y_predicted # Log the predicted output
+        })
+        self.log = pd.concat([self.log, log_entry], ignore_index=True)
+
+    def predict(self, X):
+        """This function uses the trained weights and bias to predict labels for input data X."""
+        linear_output = np.dot(X, self.weights) + self.bias
+        y_predicted = self.activation_func(linear_output)
+        return np.where(y_predicted >= 0.5, 1, 0)
+
+# Utility class for dataset creation and visualization
+class Utility: #Utility programming-wise covers
+    @staticmethod #Static method unlike classes with init, it doesn't need to access 'self'
+    def plot_decision_boundary(X, y, model, title):
+        x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1  #X[:, 0] and X[:, 1] represent the two features in the dataset X.
+        y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1 # (+ or - 1) extends the plotting area slightly beyond the points
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01), # Helps us to generate the coordinates data from individual arrays
+                            np.arange(y_min, y_max, 0.01)) # and visualize the decision boundary
+        # generates values from x_min to x_max with a step of 0.01. This creates a fine grid for smooth plotting.
+        Z = model.predict(np.c_[xx.ravel(), yy.ravel()]) # Ravel flattens the 2d arrays
+        Z = Z.reshape(xx.shape) # Z is reshaped back into a 2D same shape as xx and yy for plotting the decision boundary.
+        plt.contourf(xx, yy, Z, alpha=0.8) # alpha=0.8 parameter controls the transparency of the contour plot.
+        plt.scatter(X[:, 0], X[:, 1], c=y, edgecolors='k', marker='o', s=50) # X, y, color, bordercolor, marker, markersize
+        plt.title(title)
+        plt.xlabel('Feature 1')
+        plt.ylabel('Feature 2')
+        plt.show()
+        
+    @staticmethod
+    def create_logical_dataset(logical_operator):
+        if logical_operator == 'OR':
+            X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+            y = np.array([0, 1, 1, 1])
+        elif logical_operator == 'AND':
+            X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+            y = np.array([0, 0, 0, 1])
+        elif logical_operator == 'XOR':
+            X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+            y = np.array([0, 1, 1, 0])
+        else:
+            raise ValueError("Unknown logical operator!")
+        
+        # Create a pandas DataFrame for better visualization
+        df = pd.DataFrame(X, columns=["Feature 1", "Feature 2"])
+        df["Label"] = y
+        display(df)
+        return X, y
+# Helper function to train and visualize the perceptron on a given dataset
+class Helper: #Helper generally focused on performing small, specific series of operations (Handling scenarios)
+    @staticmethod
+    def train_and_visualize(logical_operator):
+        X, y = Utility.create_logical_dataset(logical_operator)
+        perceptron = Perceptron(learning_rate=0.1, n_iters=1000)
+        perceptron.fit(X, y)
+        Utility.plot_decision_boundary(X, y, perceptron, f'{logical_operator} Perceptron Decision Boundary')
+        
+        # Display the weights and bias log in a DataFrame
+        display(perceptron.log)
+# AND Problem
+print("Training Perceptron on AND dataset...")
+Helper.train_and_visualize('AND')
+# XOR Problem
+print("Training Perceptron on XOR dataset (expected to fail)...")
+Helper.train_and_visualize('XOR')
+# OR Problem
+print("Training Perceptron on OR dataset...")
+Helper.train_and_visualize('OR')
